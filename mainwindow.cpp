@@ -85,6 +85,7 @@ void MainWindow::init()
     ui->men_size_label->setNum(pow(2,ind->get_men_size_of_power()));
     ui->page_size_label->setNum(pow(2,ind->get_page_size_of_power()));
     ui->page_count_label->setNum((int)pt->get_page_count());
+    ui->page_total_size_label->setNum((int)pt->get_page_table_size_B());
     reflash_table();
 }
 
@@ -115,7 +116,8 @@ void MainWindow::reflash_table_by_entrys_info(const entrys_info &esi)
         ui->page_view->setItem(i,1,new QTableWidgetItem(QString::number(ei->PID)));
         ui->page_view->setItem(i,2,new QTableWidgetItem(QString::number(ei->page_id)));
         ui->page_view->setItem(i,3,new QTableWidgetItem(ei->if_possess? "false":"true"));
-        ui->page_view->setItem(i,4,new QTableWidgetItem(ei->if_dirty? "true":"false"));
+        ui->page_view->setItem(i,4,new QTableWidgetItem(QString::number(ei->conflict)));
+        //ui->page_view->setItem(i,4,new QTableWidgetItem(ei->if_dirty? "true":"false"));
     }
 }
 

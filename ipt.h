@@ -2,6 +2,7 @@
 #define IPT_H
 
 #include<iostream>
+#include<QDebug>
 #include<functional>
 #include"hasher.h"
 #include<cmath>
@@ -33,24 +34,34 @@ class Entry
 	private:
 		
 		int_16bit PID;
-		int_16bit page_id;
+        int_32bit page_id;
 		//bit from right to left:
 		//possess, dirty
-		int_16bit state_bit;
+        int_16bit state_bit;
+        int_32bit conflict;
+
 	public:
 
-		Entry(int_16bit PID=0,int_16bit page_id=0,int_16bit state_bit=0):
-			PID(PID),page_id(page_id),state_bit(state_bit){}
+        Entry(int_16bit PID=0,int_32bit page_id=0,int_16bit state_bit=0):
+            PID(PID),
+            page_id(page_id),
+            state_bit(state_bit),
+            conflict(0){}
 
 
 		inline int_16bit get_PID()const {return PID;}
-		inline int_16bit get_page_id()const {return page_id;}
+        inline int_32bit get_page_id()const {return page_id;}
 
-		inline void add_process(int_16bit PID,int_16bit page_id)
-		{
-			this->PID = PID;
-			this->page_id = page_id;
-			
+        inline void add_process(int_16bit PID,int_32bit page_id)
+        {
+
+            if(if_possess()&&!((this->PID)==PID&&(this->page_id)==page_id)){
+                conflict++;
+            }
+
+            this->PID = PID;
+            this->page_id = page_id;
+
 			set_possess();
 			set_clean();
 		}
@@ -78,13 +89,15 @@ class Entry
 		{
 			state_bit &= 509;
 		}
-		void show()
+        inline int_32bit get_conflict_count()const{
+            return conflict;
+        }
+        void show()
 		{
 			std::cout<<"PID: "<<PID<<" page_id: "<<page_id<<" state: "<<state_bit<<std::endl;
 		}
 
 };
-
 
 class PageTable
 {
@@ -104,7 +117,7 @@ public:
 		page_size_KB(page_size_KB)
 	{
 		int page_tatol_size_B = page_size_KB*1024+sizeof(Entry);
-		page_count = (menmory_size_MB*1024*1024)/page_tatol_size_B;
+        page_count = ((int_32bit)menmory_size_MB*1024*1024)/page_tatol_size_B;
 		entrys = new Entry[page_count];
 		max_usabile_address = page_count*page_size_KB*1024 - 1;
     }
@@ -118,11 +131,11 @@ public:
     bool add_process(const Process& p)
 	{
 		
-        int_16bit page_count_of_process = p.get_size()/(page_size_KB*1024);
+        int_32bit page_count_of_process = p.get_size()/(page_size_KB*1024);
 		if(p.get_size()%page_size_KB != 0)
             page_count_of_process++;
 
-        for (int i=0;i<page_count_of_process;i++)
+        for (int_32bit i=0;i<page_count_of_process;i++)
 		{
 			int_32bit address = hasher->hash(p.get_PID(),i);
 			entrys[address].add_process(p.get_PID(),i);
@@ -130,11 +143,11 @@ public:
 		return true;
     }
 
-    int_32bit get_page_id (int_16bit PID,int_16bit page_number) const {
+    int_32bit get_page_id (int_16bit PID,int_32bit page_number) const {
         return hasher->hash(PID,page_number);
     }
 
-    inline int_32bit get_physical_address(int_16bit PID,int_16bit page,int_16bit address_in_page) const {
+    inline int_32bit get_physical_address(int_16bit PID,int_32bit page,int_16bit address_in_page) const {
         return get_page_id(PID,page)*page_size_KB*1024+address_in_page;
     }
 
@@ -149,16 +162,21 @@ public:
 	}
 
     void run_process(const  Process& p){
-        int_16bit page_count_of_process = p.get_size()/(page_size_KB*1024);
+
+        int_32bit page_count_of_process = p.get_size()/(page_size_KB*1024);
         if(p.get_size()%page_size_KB != 0)
             page_count_of_process++;
 
-        for (int i=0;i<page_count_of_process;i++)
+        for (int_32bit i=0;i<page_count_of_process;i++)
         {
             int_32bit address = hasher->hash(p.get_PID(),i);
             entrys[address].add_process(p.get_PID(),i);
         }
 
+    }
+
+    int_32bit get_page_table_size_B()const{
+        return sizeof(Entry)*page_count;
     }
 
     inline int_32bit get_page_count()const {return page_count;}
@@ -237,9 +255,10 @@ struct entry_info
 {
     int_32bit count;
     int_16bit PID;
-    int_16bit page_id;
+    int_32bit page_id;
     bool if_possess;
     bool if_dirty;
+    int_32bit conflict;
 
     entry_info(){}
 
@@ -248,7 +267,8 @@ struct entry_info
         PID(entry->get_PID()),
         page_id(entry->get_page_id()),
         if_possess(entry->if_possess()),
-        if_dirty(entry->if_dirty()){}
+        if_dirty(entry->if_dirty()),
+        conflict(entry->get_conflict_count()){}
 };
 
 class entrys_info
@@ -278,7 +298,7 @@ public:
 
         int_16bit page_size_KB = pt->get_page_size_KB();
 
-        int_16bit page_count_of_process = p.get_size()/(page_size_KB*1024);
+        int_32bit page_count_of_process = p.get_size()/(page_size_KB*1024);
         if(p.get_size()%page_size_KB != 0)
             page_count_of_process++;
 
@@ -286,7 +306,7 @@ public:
 
         this->entrys = new entry_info*[page_count_of_process];
 
-        for(int i=0;i<page_count_of_process;i++){
+        for(int_32bit i=0;i<page_count_of_process;i++){
             int_32bit page_address = pt->get_page_id(p.get_PID(),i);
             this->entrys[i] = new entry_info(entrys+page_address,page_address);
         }

@@ -10,7 +10,7 @@ class Hasher
 {
 public:
 	
-	virtual int_32bit hash(int_16bit PID,int_16bit page)const = 0;
+    virtual int_32bit hash(int_16bit PID,int_32bit page)const = 0;
 
 	virtual void set_result_range(int_32bit result_range_begin,int_32bit result_range_end)=0;
 
@@ -35,9 +35,9 @@ public:
 		range = result_range_end-result_range_begin;
 	}
 
-	int_32bit hash(int_16bit PID,int_16bit page)const
+    int_32bit hash(int_16bit PID,int_32bit page)const
 	{
-		int_32bit result = ((((int_32bit)page)*12357)<<16)+PID*53457;
+        int_32bit result = ((page*12357)<<16)+PID*53457;
 
 		result%=range;
 		result+= result_range_begin;

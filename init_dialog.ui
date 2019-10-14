@@ -116,11 +116,6 @@
         <string>hash_1</string>
        </property>
       </item>
-      <item>
-       <property name="text">
-        <string>新建项目</string>
-       </property>
-      </item>
      </widget>
     </item>
    </layout>
